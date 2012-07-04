@@ -69,7 +69,6 @@ namespace selfaware_test {
     void testStructConstructionFromArrayElements()
     {
         SomeArrayStruct x{{1,2},{3.0f, 4.0f}};
-        assert(false);
     }
 
     void testStructConversionFromTuple()
