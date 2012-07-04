@@ -5,6 +5,7 @@
 #include <cstring>
 #include <cassert>
 #include <iostream>
+#include <stdexcept>
 
 namespace selfaware_test {
     using namespace selfaware;
@@ -140,6 +141,47 @@ namespace selfaware_test {
             }
         });
     }
+
+    template<typename R, typename Field, typename...Fields, typename Visitor, typename...AllFields>
+    R _select_field(Visitor &&v, char const *name, Struct<AllFields...> const &a_struct)
+    {
+        if (strcmp(name, Field::Q_name()) == 0)
+            return v(a_struct.Field::Q_value());
+        else
+            return _select_field<R, Fields...>(static_cast<Visitor&&>(v), name, a_struct);
+    }
+
+    template<typename R, typename Visitor, typename...AllFields>
+    R _select_field(Visitor &&v, char const *name, Struct<AllFields...> const &a_struct)
+    {
+        throw std::runtime_error("bad field");
+    }
+
+    template<typename Visitor, typename Field, typename...AllFields>
+    auto select_field(Visitor &&v, char const *name, Struct<Field, AllFields...> const &a_struct)
+        -> decltype(v(a_struct.Field::Q_value()))
+    {
+        return _select_field<decltype(v(a_struct.Field::Q_value())), Field, AllFields...>
+            (static_cast<Visitor&&>(v), name, a_struct);
+    }
+
+    template<typename T>
+    struct converter {
+        template<typename U>
+        T operator()(U &&x) { return T(x); }
+    };
+
+    void testStructSelectField()
+    {
+        SomeStruct t{11, char(22), 33.0f};
+
+        double dfoo = select_field(converter<double>(), "foo", t);
+        double dbar = select_field(converter<double>(), "bar", t);
+        double dbas = select_field(converter<double>(), "bas", t);
+        assert(dfoo == 11.0);
+        assert(dbar == 22.0);
+        assert(dbas == 33.0);
+    }
 }
 
 int main()
@@ -152,5 +194,6 @@ int main()
     testStructApply();
     testStructOffsetOf();
     testStructEachField();
+    testStructSelectField();
     std::cout << "ok!\n";
 }
